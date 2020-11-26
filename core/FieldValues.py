@@ -9,6 +9,7 @@ class FieldValues(list):
         value = self.field.unit_cast(self.bean, value)
         self.field.unit_check(self.bean, value)
         super().append(value)
+        self.bean.callback(f"{self.field.name}:append", value)
 
     def extend(self, values):
         for value in values:

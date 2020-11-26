@@ -56,8 +56,7 @@ class Bean:
             super().__setattr__(name, value)
 
         if field:
-            for function in self._subscribes.get(name, []):
-                function(old, value)
+            self.callback(field.name, old, value)
 
     def __new__(cls, **config):
         uid = config.get('uid')
@@ -246,6 +245,10 @@ class Bean:
         self._subscribes.setdefault(name, [])
         self._subscribes[name].append(function)
         return lambda: self._subscribes[name].remove(function)
+
+    def callback(self, key, *args, **kwargs):
+        for function in self._subscribes.get(key, []):
+            function(*args, **kwargs)
 
     @staticmethod
     def get_class(name):

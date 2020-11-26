@@ -49,6 +49,8 @@ if __name__ == '__main__':
 
     user = User.get_by_id(2)
 
+    user.subscribe("tags:append", lambda tag: print(f"Added the tag : '{tag}' to <{user.username}>"))
+
     user.tags.append("New tag")
 
     print(user.to_dict())
