@@ -8,7 +8,7 @@ if __name__ == '__main__':
     @Field(name='password', type='str')
     @Field(name='email', type='str', optional=True, regex=r"[a-zA-Z0-9_\-\.]+\@[a-zA-Z0-9_]+\.[a-zA-Z0-9_]+$")
     @Field(name='avatar', type='Avatar', optional=True)
-    @Field(name="tags", type="str", multiple=True)
+    @Field(name="tags", type="str", multiple=True, optional=True)
     class User(Bean):
         pass
 
@@ -18,13 +18,18 @@ if __name__ == '__main__':
         pass
 
 
-    # User(username="Jean-Michel", password='Xjk45!O%m', email = "jean.michel@les_bg_du_76.com", avatar=Avatar(filepath="avatars/13456.png"))
-    # User(username="Marco Polo", password='EU7$k63:/mz3', avatar=Avatar(filepath="avatars/47899.png"))
+    Bean.init_repository()
 
-    Bean.save_all()
+    Bean.delete_all()
+
     Bean.load_all()
 
-    User(uid=1, username="TotoLeRigolo", password="pwd", email="toto@lerigolo.com", tags=["tag1", "tag2", 4])
+    User(username="Jean-Michel", password='Xjk45!O%m', email="jean.michel@les_bg_du_76.com", avatar=Avatar(filepath="avatars/13456.png"))
+    User(username="Marco Polo", password='EU7$k63:/mz3', avatar=Avatar(filepath="avatars/47899.png"))
+    User(username="TotoLeRigolo", password="pwd", email="toto@lerigolo.com", tags=["tag1", "tag2"])
+
+    Bean.save_all()
+
 
     # for bean_cls in Bean._subclasses:
     #     for bean in bean_cls.__get_instances__():
@@ -38,4 +43,3 @@ if __name__ == '__main__':
             uid = data.pop('uid')
             print("-->", uid, ":", data)
 
-    Bean.save_all()

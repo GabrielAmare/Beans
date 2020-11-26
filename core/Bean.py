@@ -118,11 +118,7 @@ class Bean:
 
     @classmethod
     def load(cls, uid):
-        assert Bean._repository is not None
-        assert os.path.exists(Bean._repository)
-        dirpath = os.path.join(Bean._repository, cls.__name__.lower())
-        assert os.path.exists(dirpath), dirpath
-        fp = os.path.join(dirpath, str(uid))
+        fp = os.path.join(cls.get_repository(), str(uid))
         bean = cls.from_json(fp)
         return bean
 
@@ -130,37 +126,25 @@ class Bean:
         assert Bean._repository is not None
         assert os.path.exists(Bean._repository)
 
-        dirpath = os.path.join(Bean._repository, self.__class__.__name__.lower())
-        if not os.path.exists(dirpath):
-            os.mkdir(dirpath)
-
-        fp = os.path.join(dirpath, str(self.uid))
+        fp = os.path.join(self.get_repository(), str(self.uid))
         return self.to_json(fp, mode=mode)
 
     @classmethod
     def load_all(cls):
-        assert Bean._repository is not None
-        assert os.path.exists(Bean._repository)
         if cls is Bean:
-            for bean_cls in Bean._subclasses:
-                bean_cls.load_all()
+            for b_cls in Bean._subclasses:
+                b_cls.load_all()
         else:
-            fp = os.path.join(Bean._repository, cls.__name__.lower())
+            fp = cls.get_repository()
             for uid in os.listdir(fp):
                 cls.load(uid)
 
     @classmethod
     def save_all(cls):
-        assert Bean._repository is not None
         if cls is Bean:
-            if not os.path.exists(Bean._repository):
-                os.mkdir(Bean._repository)
             for bean_cls in Bean._subclasses:
                 bean_cls.save_all()
         else:
-            path = os.path.join(Bean._repository, cls.__name__.lower())
-            if not os.path.exists(path):
-                os.mkdir(path)
             for instance in cls.__get_instances__():
                 instance.save()
 
@@ -171,3 +155,38 @@ class Bean:
 
             if not os.path.exists(Bean._repository):
                 os.mkdir(Bean._repository)
+
+    @classmethod
+    def get_repository(cls):
+        if cls is Bean:
+            return Bean._repository
+        else:
+            return os.path.join(Bean._repository, cls.__name__.lower())
+
+    @classmethod
+    def init_repository(cls):
+        if cls is Bean:
+            assert Bean._repository is not None
+
+            dir_path = Bean.get_repository()
+            if not os.path.exists(dir_path):
+                os.mkdir(dir_path)
+
+            for b_cls in Bean._subclasses:
+                b_cls.init_repository()
+        else:
+            for b_cls in Bean._subclasses:
+                dir_path = b_cls.get_repository()
+                if not os.path.exists(dir_path):
+                    os.mkdir(dir_path)
+
+    @classmethod
+    def delete_all(cls):
+        if cls is Bean:
+            for b_cls in Bean._subclasses:
+                b_cls.delete_all()
+        else:
+            dir_path = cls.get_repository()
+            for uid in os.listdir(dir_path):
+                file_path = os.path.join(dir_path, uid)
+                os.remove(file_path)
