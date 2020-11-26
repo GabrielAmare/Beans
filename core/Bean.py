@@ -200,3 +200,14 @@ class Bean:
             for uid in os.listdir(dir_path):
                 file_path = os.path.join(dir_path, uid)
                 os.remove(file_path)
+
+    def match_config(self, **config):
+        """Return True if self matches the configuration"""
+        return all(getattr(self, key) == val for key, val in config.items())
+
+    @classmethod
+    def get_by_config(cls, **config):
+        """For a given configuration, seek for the first instance that correspond and returns it"""
+        for instance in cls._instances:
+            if instance.match_config(**config):
+                return instance
