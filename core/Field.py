@@ -6,7 +6,8 @@ class Field:
     invalid_data_type = "Invalid data type for '{cls_name}.{field_name}' : Should be '{expected_type}' instead of '{actual_type}'"
     invalid_regex_match = "Value doesn't match regex in '{cls_name}.{field_name}' : '{actual_value}' should match '{expected_regex}'"
 
-    def __init__(self, name: str, type: str, increment=None, optional=False, multiple=False, regex=None):
+    def __init__(self, name: str, type: str, increment=None, optional=False, multiple=False, regex=None,
+                 default_value=None):
         assert re.match(r"^[a-zA-Z][a-zA-Z0-9_]*$", name)
         self.name = name
         # assert type in ('str', 'int', 'float', 'list', 'dict')
@@ -14,6 +15,7 @@ class Field:
         self.increment = increment
         self.optional = optional
         self.multiple = multiple
+        self.default_value = default_value
         self.regex = regex
 
         assert not (self.optional and self.increment), "Optional and Increment options are incompatible"
@@ -50,6 +52,9 @@ class Field:
 
             if Bean._repository:
                 return self.data_type.load(value)
+
+        if value is None and self.default_value is not None:
+            return self.default_value
 
         return value
 
