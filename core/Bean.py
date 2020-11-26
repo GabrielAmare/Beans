@@ -226,3 +226,9 @@ class Bean:
         self._subscribes.setdefault(name, [])
         self._subscribes[name].append(function)
         return lambda: self._subscribes[name].remove(function)
+
+    @staticmethod
+    def get_class(name):
+        for subclass in Bean._subclasses:
+            if subclass.__name__ == name:
+                return subclass
