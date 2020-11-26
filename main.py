@@ -7,7 +7,8 @@ if __name__ == '__main__':
     @Field(name='username', type='str')
     @Field(name='password', type='str')
     @Field(name='email', type='str', optional=True, regex=r"[a-zA-Z0-9_\-\.]+\@[a-zA-Z0-9_]+\.[a-zA-Z0-9_]+$")
-    @Field(name='avatar', type='Avatar')
+    @Field(name='avatar', type='Avatar', optional=True)
+    @Field(name="tags", type="str", multiple=True)
     class User(Bean):
         pass
 
@@ -20,7 +21,10 @@ if __name__ == '__main__':
     # User(username="Jean-Michel", password='Xjk45!O%m', email = "jean.michel@les_bg_du_76.com", avatar=Avatar(filepath="avatars/13456.png"))
     # User(username="Marco Polo", password='EU7$k63:/mz3', avatar=Avatar(filepath="avatars/47899.png"))
 
+    Bean.save_all()
     Bean.load_all()
+
+    User(uid=1, username="TotoLeRigolo", password="pwd", email="toto@lerigolo.com", tags=["tag1", "tag2", 4])
 
     # for bean_cls in Bean._subclasses:
     #     for bean in bean_cls.__get_instances__():

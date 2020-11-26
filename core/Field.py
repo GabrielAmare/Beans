@@ -6,13 +6,14 @@ class Field:
     invalid_data_type = "Invalid data type for '{cls_name}.{field_name}' : Should be '{expected_type}' instead of '{actual_type}'"
     invalid_regex_match = "Value doesn't match regex in '{cls_name}.{field_name}' : '{actual_value}' should match '{expected_regex}'"
 
-    def __init__(self, name: str, type: str, increment=None, optional=False, regex=None):
+    def __init__(self, name: str, type: str, increment=None, optional=False, multiple=False, regex=None):
         assert re.match(r"^[a-zA-Z][a-zA-Z0-9_]*$", name)
         self.name = name
         # assert type in ('str', 'int', 'float', 'list', 'dict')
         self.type = type
         self.increment = increment
         self.optional = optional
+        self.multiple = multiple
         self.regex = regex
 
         assert not (self.optional and self.increment), "Optional and Increment options are incompatible"
@@ -36,7 +37,7 @@ class Field:
                     self._data_type = eval(self.type)
         return self._data_type
 
-    def cast(self, bean, value):
+    def unit_cast(self, bean, value):
         if self.increment and value is None:
             start, step = self.increment
             values = [getattr(instance, self.name) for instance in bean.__class__.__get_instances__()]
@@ -52,7 +53,16 @@ class Field:
 
         return value
 
-    def check(self, bean, value):
+    def cast(self, bean, value):
+        if self.multiple:
+            if hasattr(value, '__iter__'):
+                return [self.unit_cast(bean, item) for item in value]
+            else:
+                return [self.unit_cast(bean, value)]
+        else:
+            return self.unit_cast(bean, value)
+
+    def unit_check(self, bean, value):
         if value is None and self.optional:
             return
 
@@ -72,4 +82,13 @@ class Field:
                 actual_value=value
             ))
 
-
+    def check(self, bean, value):
+        if self.multiple:
+            if hasattr(value, '__iter__'):
+                errors = [self.unit_check(bean, item) for item in value]
+            else:
+                errors = [self.unit_check(bean, value)]
+            errors = [error for error in errors if error is not None]
+            return errors
+        else:
+            return self.unit_check(bean, value)

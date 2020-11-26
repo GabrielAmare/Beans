@@ -151,10 +151,16 @@ class Bean:
 
     @classmethod
     def save_all(cls):
+        assert Bean._repository is not None
         if cls is Bean:
+            if not os.path.exists(Bean._repository):
+                os.mkdir(Bean._repository)
             for bean_cls in Bean._subclasses:
                 bean_cls.save_all()
         else:
+            path = os.path.join(Bean._repository, cls.__name__.lower())
+            if not os.path.exists(path):
+                os.mkdir(path)
             for instance in cls.__get_instances__():
                 instance.save()
 
