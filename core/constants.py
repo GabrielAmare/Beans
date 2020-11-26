@@ -1,0 +1,2 @@
+LAZY = "lazy"
+EAGER = "eager"
