@@ -28,8 +28,16 @@ class Bean:
                     print(error, file=sys.stderr)
                 else:
                     raise error
+            if hasattr(self, name):
+                old = getattr(self, name)
+            else:
+                old = None
 
         super().__setattr__(name, value)
+
+        if field:
+            for function in self._subscribes.get(name, []):
+                function(old, value)
 
     def __new__(cls, **config):
         uid = config.get('uid')
@@ -44,6 +52,8 @@ class Bean:
 
     def __init__(self, **config):
         if not hasattr(self, '_locked'):
+            self._subscribes = {}
+
             for field in self.__get_fields__():
                 value = config.get(field.name, None)
                 self.__setattr__(field.name, value)
@@ -211,3 +221,8 @@ class Bean:
         for instance in cls._instances:
             if instance.match_config(**config):
                 return instance
+
+    def subscribe(self, name, function):
+        self._subscribes.setdefault(name, [])
+        self._subscribes[name].append(function)
+        return lambda: self._subscribes[name].remove(function)

@@ -40,6 +40,13 @@ if __name__ == '__main__':
     User(username="Marco Polo", password='EU7$k63:/mz3', avatar=Avatar(filepath="avatars/47899.png"))
     User(username="TotoLeRigolo", password="pwd", email="toto@lerigolo.com", tags=["tag1", "tag2"])
 
+    user = User.get_by_config(username="Marco Polo")
+    assert user.username == "Marco Polo"
+
+    user.subscribe("username", lambda old, new: print(f"Username change from '{old}' to '{new}'"))
+
+    user.username = "Marco 'Bidule' Polo"
+
     Bean.save_all()
 
     # for bean_cls in Bean._subclasses:
