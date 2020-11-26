@@ -47,6 +47,16 @@ if __name__ == '__main__':
 
     user.username = "Marco 'Bidule' Polo"
 
+    user = User.get_by_id(2)
+
+    user.tags.append("New tag")
+
+    print(user.to_dict())
+
+    user.tags.remove("New tag")
+
+    print(user.to_dict())
+
     Bean.save_all()
 
     # for bean_cls in Bean._subclasses:

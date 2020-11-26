@@ -2,6 +2,7 @@ import sys
 import json
 import os
 from .constants import LAZY, EAGER
+from .FieldValues import FieldValues
 
 
 class Bean:
@@ -33,7 +34,26 @@ class Bean:
             else:
                 old = None
 
-        super().__setattr__(name, value)
+        if field and field.multiple:
+            if not hasattr(self, name):
+                if hasattr(value, '__iter__'):
+                    super().__setattr__(name, FieldValues(bean=self, field=field, values=value))
+                elif value is None:
+                    super().__setattr__(name, FieldValues(bean=self, field=field, values=[]))
+                else:
+                    super().__setattr__(name, FieldValues(bean=self, field=field, values=[value]))
+            else:
+                field_values = getattr(self, name)
+                if isinstance(field_values, FieldValues):
+                    if hasattr(value, '__iter__'):
+                        field_values.extend(value)
+                    else:
+                        field_values.append(value)
+                else:
+                    raise Exception(f"FieldValues expected for a Field with 'multiple' option")
+
+        else:
+            super().__setattr__(name, value)
 
         if field:
             for function in self._subscribes.get(name, []):
@@ -120,7 +140,7 @@ class Bean:
                 else:
                     value = cast(value)
 
-            if not (value is None and mode == LAZY):
+            if not ((value is None or isinstance(value, list) and len(value) == 0) and mode == LAZY):
                 data[field.name] = value
         return data
 
