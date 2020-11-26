@@ -61,9 +61,13 @@ class Field:
     def cast(self, bean, value):
         if self.multiple:
             if hasattr(value, '__iter__'):
-                return [self.unit_cast(bean, item) for item in value]
+                value = [self.unit_cast(bean, item) for item in value]
             else:
-                return [self.unit_cast(bean, value)]
+                value = [self.unit_cast(bean, value)]
+            value = [item for item in value if item is not None]
+            if not len(value):
+                value = None
+            return value
         else:
             return self.unit_cast(bean, value)
 

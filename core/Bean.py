@@ -89,16 +89,26 @@ class Bean:
         return cls(**data)
 
     def to_dict(self, mode=EAGER) -> dict:
+        def cast(value):
+            if isinstance(value, Bean):
+                if mode == LAZY:
+                    return value.uid
+                elif mode == EAGER:
+                    return value.to_dict()
+                else:
+                    raise Exception(f"Wrong mode for Bean.to_dict method")
+            else:
+                return value
+
         data = {}
         for field in self.__get_fields__():
             value = getattr(self, field.name)
-            if isinstance(value, Bean):
-                if mode == LAZY:
-                    value = value.uid
-                elif mode == EAGER:
-                    value = value.to_dict()
+            if issubclass(field.data_type, Bean):
+                if field.multiple:
+                    if hasattr(value, '__iter__'):
+                        value = list(map(cast, value))
                 else:
-                    raise Exception(f"Wrong mode for Bean.to_dict method")
+                    value = cast(value)
 
             if not (value is None and mode == LAZY):
                 data[field.name] = value
