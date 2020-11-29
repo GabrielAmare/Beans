@@ -232,8 +232,13 @@ class Bean:
         else:
             dir_path = cls.get_repository()
             for uid in os.listdir(dir_path):
-                file_path = os.path.join(dir_path, uid)
-                os.remove(file_path)
+                uid = int(uid)
+                instance = cls.get_by_id(uid)
+                if instance:
+                    instance.delete()
+                else:
+                    file_path = os.path.join(dir_path, str(uid))
+                    os.remove(file_path)
 
     def delete(self):
         """Delete the corresponding file and the instance"""
