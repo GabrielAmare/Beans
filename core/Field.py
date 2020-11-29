@@ -63,8 +63,8 @@ class Field:
             elif self.default_value_function is not None:
                 return self.default_value_function()
 
-        if isinstance(value, list) and self.data_type is datetime:
-            return datetime.fromisocalendar(*value)
+        if isinstance(value, str) and self.data_type is datetime:
+            return datetime.fromisoformat(value)
 
         if isinstance(value, str) and self.data_type is date:
             return date.fromisoformat(value)

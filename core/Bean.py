@@ -128,7 +128,7 @@ class Bean:
                 else:
                     raise Exception(f"Wrong mode for Bean.to_dict method")
             elif isinstance(value, datetime):
-                return value.isocalendar()
+                return value.isoformat()
             elif isinstance(value, date):
                 return value.isoformat()
             else:

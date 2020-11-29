@@ -1,5 +1,5 @@
 from core import *
-from datetime import date
+from datetime import date, datetime
 
 if __name__ == '__main__':
     Bean.__config__(repository="data")
@@ -16,7 +16,7 @@ if __name__ == '__main__':
 
 
     @Field(name="content", type="str")
-    @Field(name="posted_at", type="datetime", optional=False, default_value_function=date.ctime)
+    @Field(name="posted_at", type="datetime", optional=False, default_value_function=datetime.now)
     class Message(Bean):
         pass
 
@@ -63,7 +63,7 @@ if __name__ == '__main__':
 
     Bean.save_all()
 
-    print(type(Message.get_by_id(1).posted_at))
+    print(type(Message.load(1).posted_at))
 
     # for bean_cls in Bean._subclasses:
     #     for bean in bean_cls.__get_instances__():
