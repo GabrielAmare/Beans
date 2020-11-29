@@ -1,5 +1,6 @@
 import re
 from .Bean import Bean
+from datetime import datetime
 
 
 class Field:
@@ -61,6 +62,9 @@ class Field:
                 return self.default_value
             elif self.default_value_function is not None:
                 return self.default_value_function()
+
+        if isinstance(value, list) and self.data_type is datetime:
+            return datetime.fromisocalendar(*value)
 
         return value
 
