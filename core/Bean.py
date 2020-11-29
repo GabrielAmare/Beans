@@ -235,6 +235,14 @@ class Bean:
                 file_path = os.path.join(dir_path, uid)
                 os.remove(file_path)
 
+    def delete(self):
+        """Delete the corresponding file and the instance"""
+        dir_path = self.get_repository()
+        file_path = os.path.join(dir_path, str(self.uid))
+        if os.path.exists(file_path):
+            os.remove(file_path)
+        del self
+
     def match_config(self, **config):
         """Return True if self matches the configuration"""
         return all(getattr(self, key) == val for key, val in config.items())
