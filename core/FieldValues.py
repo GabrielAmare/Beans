@@ -3,7 +3,7 @@ class FieldValues(list):
         super().__init__()
         self.bean = bean
         self.field = field
-        self.extend(values) if hasattr(values, '__iter__') else self.append(value)
+        self.extend(values) if hasattr(values, '__iter__') else self.append(values)
 
     def append(self, value):
         value = self.field.unit_cast(self.bean, value)

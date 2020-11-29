@@ -3,7 +3,7 @@ import json
 import os
 from .constants import LAZY, EAGER
 from .FieldValues import FieldValues
-from datetime import datetime
+from datetime import datetime, date
 
 
 class Bean:
@@ -129,13 +129,15 @@ class Bean:
                     raise Exception(f"Wrong mode for Bean.to_dict method")
             elif isinstance(value, datetime):
                 return value.isocalendar()
+            elif isinstance(value, date):
+                return value.isoformat()
             else:
                 return value
 
         data = {}
         for field in self.__get_fields__():
             value = getattr(self, field.name)
-            if issubclass(field.data_type, (Bean, datetime)):
+            if issubclass(field.data_type, (Bean, datetime, date)):
                 if field.multiple:
                     if hasattr(value, '__iter__'):
                         value = list(map(cast, value))

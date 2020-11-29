@@ -1,6 +1,6 @@
 import re
 from .Bean import Bean
-from datetime import datetime
+from datetime import datetime, date
 
 
 class Field:
@@ -65,6 +65,9 @@ class Field:
 
         if isinstance(value, list) and self.data_type is datetime:
             return datetime.fromisocalendar(*value)
+
+        if isinstance(value, str) and self.data_type is date:
+            return date.fromisoformat(value)
 
         return value
 
