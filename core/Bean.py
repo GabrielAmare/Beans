@@ -1,8 +1,7 @@
 import sys
-import json
-import os
-from .constants import LAZY, EAGER
+from .constants import LAZY, EAGER, JSON
 from .FieldValues import FieldValues
+from .RepositoryManager import RepositoryManager
 from datetime import datetime, date
 
 
@@ -13,23 +12,38 @@ class Bean:
     _instances = []
     _subclasses = []
 
-    _repository = None
+    __repository__: RepositoryManager = None
+    __file_mode__: str = JSON
+    __repo_name__: str = "bean"
 
     def __init_subclass__(cls, **kwargs):
         cls._fields = []
         cls._instances = []
+        cls.__repo_name__ = cls.__name__.lower()
         Bean._subclasses.append(cls)
 
     def __setattr__(self, name, value):
         field = self.__get_field__(name)
         if field:
+            if hasattr(self, name):
+                value = field.update(self, value)
+            else:
+                value = field.init(self, value)
+
+        super().__setattr__(name, value)
+
+        if field:
+            self.callback(field.name, value)
+
+        if field:
             value = field.cast(self, value)
-            error = field.check(self, value)
-            if error:
+            errors = field.check(self, value)
+            if errors:
                 if Bean._debug:
-                    print(error, file=sys.stderr)
+                    for error in errors:
+                        print(error, file=sys.stderr)
                 else:
-                    raise error
+                    raise Exception(errors)
             if hasattr(self, name):
                 old = getattr(self, name)
             else:
@@ -37,12 +51,13 @@ class Bean:
 
         if field and field.multiple:
             if not hasattr(self, name):
-                if hasattr(value, '__iter__'):
-                    super().__setattr__(name, FieldValues(bean=self, field=field, values=value))
-                elif value is None:
-                    super().__setattr__(name, FieldValues(bean=self, field=field, values=[]))
-                else:
-                    super().__setattr__(name, FieldValues(bean=self, field=field, values=[value]))
+                super().__setattr__(name, value)
+                # if hasattr(value, '__iter__'):
+                #     super().__setattr__(name, FieldValues(bean=self, field=field, values=value))
+                # elif value is None:
+                #     super().__setattr__(name, FieldValues(bean=self, field=field, values=[]))
+                # else:
+                #     super().__setattr__(name, FieldValues(bean=self, field=field, values=[value]))
             else:
                 field_values = getattr(self, name)
                 if isinstance(field_values, FieldValues):
@@ -58,6 +73,9 @@ class Bean:
 
         if field:
             self.callback(field.name, old, value)
+
+    def __repr__(self):
+        return repr(self.to_dict())
 
     def __new__(cls, **config):
         uid = config.get('uid')
@@ -76,9 +94,46 @@ class Bean:
 
             for field in self.__get_fields__():
                 value = config.get(field.name, None)
-                self.__setattr__(field.name, value)
+                super().__setattr__(field.name, field.init(self, value))
             self.__add_instance__(self)
             self._locked = True
+
+    @staticmethod
+    def __setup__(create_db=True, reset_db=False, load_db=True):
+        if create_db:
+            Bean.__init_repo__()
+
+        if reset_db:
+            Bean.__delete_all__()
+
+        if load_db:
+            Bean.__load_all__()
+
+    @staticmethod
+    def __config__(**config):
+        if 'repository' in config:
+            repository = config.pop('repository')
+            if Bean.__repository__:
+                Bean.__repository__.root = repository
+            else:
+                Bean.__repository__ = RepositoryManager(root=repository)
+
+        if 'file_mode' in config:
+            Bean.__file_mode__ = config.pop('file_mode')
+
+    @staticmethod
+    def __get_subclasses__():
+        for subcls in Bean._subclasses:
+            yield subcls
+
+    @staticmethod
+    def __init_repo__():
+        assert Bean.__repository__, f"Bean Repository is setup : Use Bean.__config__(repository='<your_repository>')"
+        repo = Bean.__repository__
+        repo.mkdir()
+
+        for cls in Bean.__get_subclasses__():
+            repo.mkdir(cls.__repo_name__)
 
     @classmethod
     def __add_instance__(cls, instance):
@@ -109,10 +164,23 @@ class Bean:
                 return field
 
     @classmethod
-    def get_by_id(cls, uid):
+    def get_by(cls, key, value):
+        """Return the first instance found with the attr <key> is set to <value>"""
+        assert cls.__get_field__(key), f"The field {cls.__name__}.{key} doesn't exist !"
         for instance in cls._instances:
-            if instance.uid == uid:
+            if getattr(instance, key) == value:
                 return instance
+
+    @classmethod
+    def get_by_id(cls, uid: int, load_if_not_found: bool = False):
+        instance = cls.get_by('uid', uid)
+        if isinstance(instance, cls):
+            return instance
+        elif Bean.__repository__ and load_if_not_found:
+            try:
+                return cls.load(uid)
+            except:
+                return None
 
     @classmethod
     def from_dict(cls, data: dict):
@@ -137,7 +205,7 @@ class Bean:
         data = {}
         for field in self.__get_fields__():
             value = getattr(self, field.name)
-            if issubclass(field.data_type, (Bean, datetime, date)):
+            if issubclass(field.get_field_data_type(), (Bean, datetime, date)):
                 if field.multiple:
                     if hasattr(value, '__iter__'):
                         value = list(map(cast, value))
@@ -148,105 +216,88 @@ class Bean:
                 data[field.name] = value
         return data
 
-    @classmethod
-    def from_json(cls, fp: str):
-        file = open(fp, encoding="utf-8", mode="r")
-        data = json.load(file)
-        bean = cls.from_dict(data)
-        return bean
-
-    def to_json(self, fp: str, mode=LAZY):
-        file = open(fp, encoding="utf-8", mode="w")
-        data = self.to_dict(mode=mode)
-        json.dump(data, file)
+    # @classmethod
+    # def from_json(cls, fp: str):
+    #     file = open(fp, encoding="utf-8", mode="r")
+    #     data = json.load(file)
+    #     bean = cls.from_dict(data)
+    #     return bean
+    #
+    # def to_json(self, fp: str, mode=LAZY):
+    #     file = open(fp, encoding="utf-8", mode="w")
+    #     data = self.to_dict(mode=mode)
+    #     json.dump(data, file)
 
     @classmethod
     def load(cls, uid):
-        fp = os.path.join(cls.get_repository(), str(uid))
-        bean = cls.from_json(fp)
+        assert Bean.__repository__, f"Bean Repository is setup : Use Bean.__config__(repository='<your_repository>')"
+        data = Bean.__repository__.read(
+            path=cls.__repo_name__,
+            name=uid,
+            mode=cls.__file_mode__
+        )
+        bean = cls.from_dict(data)
         return bean
 
     def save(self, mode=LAZY):
-        assert Bean._repository is not None
-        assert os.path.exists(Bean._repository)
+        assert Bean.__repository__, f"Bean Repository is setup : Use Bean.__config__(repository='<your_repository>')"
+        Bean.__repository__.update(
+            path=self.__repo_name__,
+            name=self.uid,
+            data=self.to_dict(mode=mode),
+            mode=self.__file_mode__,
+            ignore_missing=True
+        )
 
-        fp = os.path.join(self.get_repository(), str(self.uid))
-        return self.to_json(fp, mode=mode)
+    def delete(self):
+        """Delete the corresponding file and the instance"""
+        assert Bean.__repository__, f"Bean Repository is setup : Use Bean.__config__(repository='<your_repository>')"
+        print(f'deleting {self.__repo_name__}.{self.uid}')
+        Bean.__repository__.delete(
+            path=self.__repo_name__,
+            name=self.uid,
+            mode=self.__file_mode__,
+            ignore_missing=True
+        )
 
     @classmethod
-    def load_all(cls):
+    def __load_all__(cls):
         if cls is Bean:
-            for b_cls in Bean._subclasses:
-                b_cls.load_all()
+            for b_cls in Bean.__get_subclasses__():
+                b_cls.__load_all__()
         else:
-            fp = cls.get_repository()
-            for uid in os.listdir(fp):
-                cls.load(uid)
+            for data in Bean.__repository__.read_all(
+                    path=cls.__repo_name__,
+                    mode=cls.__file_mode__
+            ):
+                cls.from_dict(data)
 
     @classmethod
-    def save_all(cls):
+    def __save_all__(cls):
         if cls is Bean:
-            for bean_cls in Bean._subclasses:
-                bean_cls.save_all()
+            for bean_cls in Bean.__get_subclasses__():
+                bean_cls.__save_all__()
         else:
             for instance in cls.__get_instances__():
                 instance.save()
 
-    @staticmethod
-    def __config__(**config):
-        if 'repository' in config:
-            Bean._repository = config.pop('repository')
-
-            if not os.path.exists(Bean._repository):
-                os.mkdir(Bean._repository)
-
     @classmethod
-    def get_repository(cls):
+    def __delete_all__(cls):
         if cls is Bean:
-            return Bean._repository
+            for b_cls in Bean.__get_subclasses__():
+                b_cls.__delete_all__()
         else:
-            return os.path.join(Bean._repository, cls.__name__.lower())
+            # delete the loaded instances
+            while cls._instances:
+                instance = cls._instances.pop(0)
+                instance.delete()
+                del instance
 
-    @classmethod
-    def init_repository(cls):
-        if cls is Bean:
-            assert Bean._repository is not None
-
-            dir_path = Bean.get_repository()
-            if not os.path.exists(dir_path):
-                os.mkdir(dir_path)
-
-            for b_cls in Bean._subclasses:
-                b_cls.init_repository()
-        else:
-            for b_cls in Bean._subclasses:
-                dir_path = b_cls.get_repository()
-                if not os.path.exists(dir_path):
-                    os.mkdir(dir_path)
-
-    @classmethod
-    def delete_all(cls):
-        if cls is Bean:
-            for b_cls in Bean._subclasses:
-                b_cls.delete_all()
-        else:
-            dir_path = cls.get_repository()
-            for uid in os.listdir(dir_path):
-                uid = int(uid)
-                instance = cls.get_by_id(uid)
-                if instance:
-                    instance.delete()
-                else:
-                    file_path = os.path.join(dir_path, str(uid))
-                    os.remove(file_path)
-
-    def delete(self):
-        """Delete the corresponding file and the instance"""
-        dir_path = self.get_repository()
-        file_path = os.path.join(dir_path, str(self.uid))
-        if os.path.exists(file_path):
-            os.remove(file_path)
-        del self
+            # delete the remaining files
+            cls.__repository__.delete_all(
+                path=cls.__repo_name__,
+                mode=cls.__file_mode__
+            )
 
     def match_config(self, **config):
         """Return True if self matches the configuration"""
