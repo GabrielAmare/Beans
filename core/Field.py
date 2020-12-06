@@ -6,6 +6,7 @@ from .FieldList import FieldList
 from datetime import datetime, date
 from .exceptions import JoinError
 from .field_constraints import *
+from .constants import CREATE, UPDATE
 
 rpy_regex = re.compile(r"^([!?*+])([a-zA-Z][a-zA-Z0-9_]*)\[([a-zA-Z][a-zA-Z0-9_]*)\]$")
 
@@ -151,23 +152,8 @@ class Field:
         assert None not in errors
         return errors
 
-    def update(self, bean, value):
-        """Method to replace the <bean> current value for <self> field by <value>"""
-        if self.optional and value is None:
-            if self.multiple:
-                return FieldList(bean=bean, field=self)
-            else:
-                return None
-        else:
-            value = self.cast(bean, value)
-            errors = self.check(bean, value)
-            if errors:
-                raise JoinError(errors)
-            else:
-                return value
-
-    def init(self, bean, value):
-        """Method to setup the <bean> current value for <self> field as <value>"""
+    def set(self, bean, value, mode):
+        """Method to cast/check the value before returning it, modes -> CREATE, UPDATE"""
         if self.optional and value is None:
             if self.multiple:
                 return FieldList(bean=bean, field=self)
@@ -184,3 +170,11 @@ class Field:
                     raise error
             else:
                 return value
+
+    def update(self, bean, value):
+        """Method to replace the <bean> current value for <self> field by <value>"""
+        return self.set(bean=bean, value=value, mode=UPDATE)
+
+    def init(self, bean, value):
+        """Method to setup the <bean> current value for <self> field as <value>"""
+        return self.set(bean=bean, value=value, mode=CREATE)
