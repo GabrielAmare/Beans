@@ -1,13 +1,26 @@
-import sys
-from .constants import LAZY, EAGER, JSON
-from .FieldList import FieldList
+from .constants import LAZY, EAGER, JSON, CREATE, UPDATE
 from .RepositoryManager import RepositoryManager
 from datetime import datetime, date
 
 
 class Bean:
-    _debug = True
+    """
+        Bean :
+            __debug_mode__ : If True, prevent field check errors to stop the runtime
+            __file_mode__ : Mode used to save/load files in repository
+                JSON : .json
+                RAW : (no extensions)
+            __repository__ : Repository manager object
+                .root : Name of the main repository
 
+            _subclasses : Bean subclasses list
+
+        Bean subclasses :
+            __repo_name__ : Name of the directory where Bean subclasses instances are stored (in the main repository)
+
+            _fields : fields of the Bean subclass, used to cast/check the values
+            _instances : instances of the Bean subclass, holds the runtime loaded instances
+    """
     _fields = []
     _instances = []
     _subclasses = []
@@ -20,92 +33,55 @@ class Bean:
     def __init_subclass__(cls, **kwargs):
         cls._fields = []
         cls._instances = []
-        cls.__repo_name__ = cls.__name__.lower()
+        cls.__repo_name__ = kwargs.get('repo_name', cls.__name__.lower())
         Bean._subclasses.append(cls)
 
-    def __setattr__(self, name, value):
+    def __setattr__(self, name, value, mode=UPDATE):
         field = self.__get_field__(name)
         if field:
-            value = field.update(self, value)
+            value = field.set(bean=self, value=value, mode=mode)
             super().__setattr__(field.name, value)
             self.callback(field.name, value)
+            self.callback(field.name + ":" + mode, value)
         else:
             super().__setattr__(name, value)
-
-        # if field:
-        #     if hasattr(self, name):
-        #         value = field.update(self, value)
-        #     else:
-        #         value = field.init(self, value)
-        #
-        # super().__setattr__(name, value)
-        #
-        # if field:
-        #     self.callback(field.name, value)
-        #
-        # if field:
-        #     value = field.cast(self, value)
-        #     errors = field.check(self, value)
-        #     if errors:
-        #         if Bean._debug:
-        #             for error in errors:
-        #                 print(error, file=sys.stderr)
-        #         else:
-        #             raise Exception(errors)
-        #     if hasattr(self, name):
-        #         old = getattr(self, name)
-        #     else:
-        #         old = None
-        #
-        # if field and field.multiple:
-        #     if not hasattr(self, name):
-        #         super().__setattr__(name, value)
-        #         # if hasattr(value, '__iter__'):
-        #         #     super().__setattr__(name, FieldValues(bean=self, field=field, values=value))
-        #         # elif value is None:
-        #         #     super().__setattr__(name, FieldValues(bean=self, field=field, values=[]))
-        #         # else:
-        #         #     super().__setattr__(name, FieldValues(bean=self, field=field, values=[value]))
-        #     else:
-        #         field_values = getattr(self, name)
-        #         if isinstance(field_values, FieldValues):
-        #             if hasattr(value, '__iter__'):
-        #                 field_values.extend(value)
-        #             else:
-        #                 field_values.append(value)
-        #         else:
-        #             raise Exception(f"FieldValues expected for a Field with 'multiple' option")
-        #
-        # else:
-        #     super().__setattr__(name, value)
-        #
-        # if field:
-        #     self.callback(field.name, old, value)
 
     def __repr__(self):
         return repr(self.to_dict())
 
     def __new__(cls, **config):
-        uid = config.get('uid')
-
-        instance = cls.get_by_id(uid)
+        instance = cls.get_by_id(config.get('uid'))
 
         if not instance:
             instance = super().__new__(cls)
-            instance.__init__(**config)
 
         return instance
 
     def __init__(self, **config):
         if not hasattr(self, '_locked'):
             self._subscribes = {}
-
-            for field in self.__get_fields__():
-                value = config.get(field.name, None)
-                value = field.init(self, value)
-                super().__setattr__(field.name, value)
+            self.onCreate(**config)
             self.__add_instance__(self)
             self._locked = True
+
+    def apply_config(self, mode, **config):
+        for name, value in config.items():
+            self.__setattr__(name, value, mode)
+
+    def onCreate(self, **config):
+        """Function called when the instance is created"""
+        # normalize config
+        for field in self.__get_fields__():
+            config.setdefault(field.name, None)
+        self.apply_config(CREATE, **config)
+
+    def onUpdate(self, **config):
+        """Function called when the instance is updated"""
+        self.apply_config(UPDATE, **config)
+
+    def onDelete(self):
+        """Function called when the instance is deleted"""
+        pass
 
     @staticmethod
     def __setup__(create_db=True, reset_db=False, load_db=True):
