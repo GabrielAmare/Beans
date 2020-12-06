@@ -12,3 +12,8 @@ PERCENT = "percent"
 
 # LENGTH SHORTCUTS
 NOT_NULL = "not_null"
+
+CREATE = "create"
+READ = "read"
+UPDATE = "update"
+DELETE = "delete"
