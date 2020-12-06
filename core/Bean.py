@@ -1,6 +1,6 @@
 import sys
 from .constants import LAZY, EAGER, JSON
-from .FieldValues import FieldValues
+from .FieldList import FieldList
 from .RepositoryManager import RepositoryManager
 from datetime import datetime, date
 
@@ -15,6 +15,7 @@ class Bean:
     __repository__: RepositoryManager = None
     __file_mode__: str = JSON
     __repo_name__: str = "bean"
+    __debug_mode__: bool = False
 
     def __init_subclass__(cls, **kwargs):
         cls._fields = []
@@ -25,54 +26,61 @@ class Bean:
     def __setattr__(self, name, value):
         field = self.__get_field__(name)
         if field:
-            if hasattr(self, name):
-                value = field.update(self, value)
-            else:
-                value = field.init(self, value)
-
-        super().__setattr__(name, value)
-
-        if field:
+            value = field.update(self, value)
+            super().__setattr__(field.name, value)
             self.callback(field.name, value)
-
-        if field:
-            value = field.cast(self, value)
-            errors = field.check(self, value)
-            if errors:
-                if Bean._debug:
-                    for error in errors:
-                        print(error, file=sys.stderr)
-                else:
-                    raise Exception(errors)
-            if hasattr(self, name):
-                old = getattr(self, name)
-            else:
-                old = None
-
-        if field and field.multiple:
-            if not hasattr(self, name):
-                super().__setattr__(name, value)
-                # if hasattr(value, '__iter__'):
-                #     super().__setattr__(name, FieldValues(bean=self, field=field, values=value))
-                # elif value is None:
-                #     super().__setattr__(name, FieldValues(bean=self, field=field, values=[]))
-                # else:
-                #     super().__setattr__(name, FieldValues(bean=self, field=field, values=[value]))
-            else:
-                field_values = getattr(self, name)
-                if isinstance(field_values, FieldValues):
-                    if hasattr(value, '__iter__'):
-                        field_values.extend(value)
-                    else:
-                        field_values.append(value)
-                else:
-                    raise Exception(f"FieldValues expected for a Field with 'multiple' option")
-
         else:
             super().__setattr__(name, value)
 
-        if field:
-            self.callback(field.name, old, value)
+        # if field:
+        #     if hasattr(self, name):
+        #         value = field.update(self, value)
+        #     else:
+        #         value = field.init(self, value)
+        #
+        # super().__setattr__(name, value)
+        #
+        # if field:
+        #     self.callback(field.name, value)
+        #
+        # if field:
+        #     value = field.cast(self, value)
+        #     errors = field.check(self, value)
+        #     if errors:
+        #         if Bean._debug:
+        #             for error in errors:
+        #                 print(error, file=sys.stderr)
+        #         else:
+        #             raise Exception(errors)
+        #     if hasattr(self, name):
+        #         old = getattr(self, name)
+        #     else:
+        #         old = None
+        #
+        # if field and field.multiple:
+        #     if not hasattr(self, name):
+        #         super().__setattr__(name, value)
+        #         # if hasattr(value, '__iter__'):
+        #         #     super().__setattr__(name, FieldValues(bean=self, field=field, values=value))
+        #         # elif value is None:
+        #         #     super().__setattr__(name, FieldValues(bean=self, field=field, values=[]))
+        #         # else:
+        #         #     super().__setattr__(name, FieldValues(bean=self, field=field, values=[value]))
+        #     else:
+        #         field_values = getattr(self, name)
+        #         if isinstance(field_values, FieldValues):
+        #             if hasattr(value, '__iter__'):
+        #                 field_values.extend(value)
+        #             else:
+        #                 field_values.append(value)
+        #         else:
+        #             raise Exception(f"FieldValues expected for a Field with 'multiple' option")
+        #
+        # else:
+        #     super().__setattr__(name, value)
+        #
+        # if field:
+        #     self.callback(field.name, old, value)
 
     def __repr__(self):
         return repr(self.to_dict())
@@ -94,7 +102,8 @@ class Bean:
 
             for field in self.__get_fields__():
                 value = config.get(field.name, None)
-                super().__setattr__(field.name, field.init(self, value))
+                value = field.init(self, value)
+                super().__setattr__(field.name, value)
             self.__add_instance__(self)
             self._locked = True
 
@@ -120,6 +129,9 @@ class Bean:
 
         if 'file_mode' in config:
             Bean.__file_mode__ = config.pop('file_mode')
+
+        if 'debug_mode' in config:
+            Bean.__debug_mode__ = config.pop('debug_mode')
 
     @staticmethod
     def __get_subclasses__():
@@ -215,18 +227,6 @@ class Bean:
             if not ((value is None or isinstance(value, list) and len(value) == 0) and mode == LAZY):
                 data[field.name] = value
         return data
-
-    # @classmethod
-    # def from_json(cls, fp: str):
-    #     file = open(fp, encoding="utf-8", mode="r")
-    #     data = json.load(file)
-    #     bean = cls.from_dict(data)
-    #     return bean
-    #
-    # def to_json(self, fp: str, mode=LAZY):
-    #     file = open(fp, encoding="utf-8", mode="w")
-    #     data = self.to_dict(mode=mode)
-    #     json.dump(data, file)
 
     @classmethod
     def load(cls, uid):

@@ -1,34 +1,64 @@
 from core import *
+from datetime import datetime
 
 if __name__ == '__main__':
-    Bean.__config__(repository="repository")
+    Bean.__config__(repository="repository", debug_mode=True)
 
 
-    @Field(rpy="!username[str]")
+    @Field(rpy="!username[str]", length=(4, 30))
     @Field(rpy="!password[str]")
+    @Field(rpy="?age[int]", range=POSITIVE)
     @Field(rpy="!email[str]", regex=r"^\S+@\S+$")
+    @Field(rpy="?avatar[Avatar]")
     class User(Bean):
         pass
 
 
-    @Field(rpy="*users[User]")
-    class Group(Bean):
+    @Field(rpy="!filepath[str]")
+    class Avatar(Bean):
         pass
 
 
-    Bean.__setup__(create_db=True, reset_db=True, load_db=True)
+    @Field(rpy="*users[User]")
+    @Field(rpy="!creation[datetime]", default=datetime.now)
+    @Field(rpy="!last_update[datetime]", default=datetime.now)
+    class Group(Bean):
+        @property
+        def duration(self):
+            return self.last_update - self.creation
 
-    u1 = User(username="admin", password="admin", email="admin@contact.com")
-    u2 = User(username="gabj", password="gabj", email="gabriel.amare.31@gmail.com")
-    u3 = User(username="jpepin", password="veryverymuch", email="julien.pepin.31@gmail.com")
 
-    g1 = Group(users=[u1, u2, u3])
+    def show_db():
+        for bean_cls in Bean.__get_subclasses__():
+            print(f"/{Bean.__repository__.root}/{bean_cls.__repo_name__}/")
+            for instance in bean_cls.__get_instances__():
+                print("   ", instance.to_dict(LAZY))
+            print()
 
-    print(u1.to_dict(LAZY))
-    print(u2.to_dict(LAZY))
-    print(u3.to_dict(LAZY))
 
-    print(g1.to_dict(LAZY))
+    def build():
+        Bean.__setup__(create_db=True, reset_db=True, load_db=False)
+
+        u1 = User(username="admin", password="admin", email="admin@contact.com",
+                  avatar=Avatar(filepath="avatars/admin.png"))
+        u2 = User(username="gabj", password="gabj", age=25, email="gabriel.amare.31@gmail.com")
+        u3 = User(username="jpepin", password="veryverymuch", age=25, email="julien.pepin.31@gmail.com")
+
+        g1 = Group(uid=1, users=[u1, u2, u3], last_update=datetime.now())
+
+
+    def update():
+        Bean.__setup__(create_db=True, reset_db=False, load_db=True)
+        g1 = Group.get_by_id(1)
+        g1.last_update = datetime.now()
+
+        u1 = User.get_by('username', 'admin')
+        u1.avatar.filepath = "avatars/new_admin.png"
+
+
+    update()
+
+    show_db()
 
     Bean.__save_all__()
 

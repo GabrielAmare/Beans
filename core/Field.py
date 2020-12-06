@@ -1,13 +1,29 @@
 import re
+import sys
+
 from .Bean import Bean
-from .FieldValues import FieldValues
+from .FieldList import FieldList
 from datetime import datetime, date
-from .exceptions import *
+from .exceptions import InvalidDataTypeError, JoinError
 from .field_constraints import *
+
+rpy_regex = re.compile(r"^([!?*+])([a-zA-Z][a-zA-Z0-9_]*)\[([a-zA-Z][a-zA-Z0-9_]*)\]$")
+
+
+def cast_rpy(rpy):
+    match = rpy_regex.match(rpy)
+    if match:
+        card_symbol, field_name, field_type = match.groups()
+        optional, multiple = {
+            '!': (False, False),
+            '?': (True, False),
+            '*': (True, True),
+            '+': (False, True)
+        }[card_symbol]
+        return field_name, field_type, optional, multiple
 
 
 class Field:
-    _re_rpy = re.compile(r"^([!?*+])([a-zA-Z][a-zA-Z0-9_]*)\[([a-zA-Z][a-zA-Z0-9_]*)\]$")
     _re_var = re.compile(r"^[a-zA-Z][a-zA-Z0-9_]*$")
     base_types = {
         'str': str,
@@ -30,24 +46,15 @@ class Field:
     optional: bool
     multiple: bool
 
-    @classmethod
-    def _cast_rpy(cls, value):
-        match = cls._re_rpy.match(value)
-        if match:
-            card_symbol, field_name, field_type = match.groups()
-            optional, multiple = {
-                '!': (False, False),
-                '?': (True, False),
-                '*': (True, True),
-                '+': (False, True)
-            }[card_symbol]
-            return field_name, field_type, optional, multiple
+    def __call__(self, cls):
+        """Decorator syntax to create bean fields"""
+        cls.__add_field__(self)
+        return cls
 
     def __init__(self, **cfg):
         # DEFINING BASE INFORMATIONS
         if 'rpy' in cfg:
-            rpy = cfg.pop('rpy')
-            self.name, self.type, self.optional, self.multiple = self._cast_rpy(rpy)
+            self.name, self.type, self.optional, self.multiple = cast_rpy(cfg.pop('rpy'))
         elif 'name' in cfg and 'type' in cfg:
             self.name = cfg.pop('name')
             self.type = cfg.pop('type')
@@ -56,6 +63,7 @@ class Field:
         else:
             raise Exception(f"Field is missing information for 'name', 'type', 'optional' and/or 'multiple' ")
 
+        # CHECKING BASE INFORMATION
         assert self._re_var.match(self.name)
         assert self._re_var.match(self.type)
         assert isinstance(self.optional, bool)
@@ -68,7 +76,9 @@ class Field:
             self.constraints.append(DateConstraint())
         elif self.type == 'datetime':
             self.constraints.append(DateTimeConstraint())
-        elif self.type not in Field.base_types:
+        elif self.type in Field.base_types:
+            self.constraints.append(DataTypeConstraint())
+        else:
             self.constraints.append(ForeignKeyConstraint())
 
         for key, cls in self._constraints_table.items():
@@ -80,10 +90,6 @@ class Field:
 
         if cfg:
             raise Exception(f"Field config has unparsed kwargs : " + ", ".join(cfg.keys()))
-
-    def __call__(self, cls):
-        cls.__add_field__(self)
-        return cls
 
     def get_field_data_type(self):
         if not hasattr(self, '_type'):
@@ -116,28 +122,25 @@ class Field:
             else:
                 values = [self.cast_one(bean, value)]
 
-            return FieldValues(bean=bean, field=self, values=values)
+            return FieldList(bean=bean, field=self, values=values)
         else:
             return self.cast_one(bean, value)
 
-    def check_one(self, bean, value):
+    def check_one(self, bean, value) -> list:
         if value is None and self.optional:
-            return
+            return []
 
         errors = []
-
-        if not isinstance(value, self.get_field_data_type()):
-            errors.append(InvalidDataTypeError(bean=bean, field=self, value=value))
 
         for constraint in self.constraints:
             errors.extend(constraint.check(bean=bean, field=self, value=value))
 
         return errors
 
-    def check(self, bean, value):
+    def check(self, bean, value) -> list:
         errors = []
         if self.multiple:
-            assert isinstance(value, FieldValues)
+            assert isinstance(value, FieldList)
             for item in value:
                 item_errors = self.check_one(bean, item)
                 errors.extend(item_errors)
@@ -152,7 +155,7 @@ class Field:
         """Method to replace the <bean> current value for <self> field by <value>"""
         if self.optional and value is None:
             if self.multiple:
-                return FieldValues(bean=bean, field=self)
+                return FieldList(bean=bean, field=self)
             else:
                 return None
         else:
@@ -167,13 +170,17 @@ class Field:
         """Method to setup the <bean> current value for <self> field as <value>"""
         if self.optional and value is None:
             if self.multiple:
-                return FieldValues(bean=bean, field=self)
+                return FieldList(bean=bean, field=self)
             else:
                 return None
         else:
             value = self.cast(bean, value)
             errors = self.check(bean, value)
             if errors:
-                raise Exception(errors)
+                error = JoinError(errors)
+                if Bean.__debug_mode__:
+                    print(error, file=sys.stderr)
+                else:
+                    raise error
             else:
                 return value

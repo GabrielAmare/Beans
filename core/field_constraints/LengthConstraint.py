@@ -8,6 +8,9 @@ class LengthConstraint(FieldConstraint):
         self.min_value = min_value
         self.max_value = max_value
 
+    def __repr__(self):
+        return f"Should be an object with length in range [{self.min_value}, {self.max_value}]"
+
     @classmethod
     def _field_cast(cls, value):
         if isinstance(value, tuple) and len(value) == 2:
@@ -26,4 +29,6 @@ class LengthConstraint(FieldConstraint):
 
     def check(self, bean, field, value):
         if not self.min_value <= len(value) <= self.max_value:
-            return ValueLengthError(bean=bean, field=field, value=value)
+            return [ValueLengthError(bean=bean, field=field, constraint=self, value=value)]
+        else:
+            return []

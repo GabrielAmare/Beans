@@ -28,6 +28,8 @@ class RangeConstraint(FieldConstraint):
     def cast(self, bean, field, value):
         return False, value
 
-    def check(self, bean, field, value):
+    def check(self, bean, field, value) -> list:
         if not self.min_value <= value <= self.max_value:
-            return ValueNotInRangeError(bean=bean, field=field, value=value)
+            return [ValueNotInRangeError(bean=bean, field=field, constraint=self, value=value)]
+        else:
+            return []

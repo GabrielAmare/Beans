@@ -3,13 +3,16 @@ from datetime import datetime
 
 
 class DateTimeConstraint(FieldConstraint):
-    def cast(self, bean, field, value):
+    def __repr__(self):
+        return f"Should be a datetime object"
+
+    def cast(self, bean, field, value) -> tuple:
         if isinstance(value, datetime):
-            return value
+            return True, value
         elif isinstance(value, str):
-            return datetime.fromisoformat(value)
+            return True, datetime.fromisoformat(value)
         else:
-            return value
+            return False, value
 
     def check(self, bean, field, value):
         return []

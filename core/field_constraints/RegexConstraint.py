@@ -23,4 +23,6 @@ class RegexConstraint(FieldConstraint):
 
     def check(self, bean, field, value):
         if not self.regex.match(value):
-            yield InvalidRegexMatchError(bean=bean, field=self, value=value)
+            return [InvalidRegexMatchError(bean=bean, field=field, constraint=self, value=value)]
+        else:
+            return []

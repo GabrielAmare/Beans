@@ -8,3 +8,4 @@ from .DateConstraint import DateConstraint
 from .DateTimeConstraint import DateTimeConstraint
 from .ForeignKeyConstraint import ForeignKeyConstraint
 from .DefaultValueConstraint import DefaultValueConstraint
+from .DataTypeConstraint import DataTypeConstraint

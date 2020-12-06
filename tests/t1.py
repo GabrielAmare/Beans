@@ -37,7 +37,7 @@ class Test1(unittest.TestCase):
             pass
 
         v1 = C4()
-        self.assertEqual(v1.values, FieldValues)
+        self.assertEqual(v1.values, FieldList)
         self.assertEqual(len(v1.values), 0)
 
         v1.values.append(1)

@@ -1,4 +1,4 @@
-class FieldValues(list):
+class FieldList(list):
     """
         Overriding the list class to allow the Bean functionalities
     """
