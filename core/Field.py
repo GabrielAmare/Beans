@@ -4,7 +4,7 @@ import sys
 from .Bean import Bean
 from .FieldList import FieldList
 from datetime import datetime, date
-from .exceptions import InvalidDataTypeError, JoinError
+from .exceptions import JoinError
 from .field_constraints import *
 
 rpy_regex = re.compile(r"^([!?*+])([a-zA-Z][a-zA-Z0-9_]*)\[([a-zA-Z][a-zA-Z0-9_]*)\]$")
