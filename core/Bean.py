@@ -182,7 +182,7 @@ class Bean:
     def get_by(cls, key, value):
         """Return the first instance found with the attr <key> is set to <value>"""
         assert cls.__get_field__(key), f"The field {cls.__name__}.{key} doesn't exist !"
-        return cls.__get_instances__().keep(check_attribute(key, value)).first()
+        return cls.__get_instances__().checkattr(key, value).first()
 
     @classmethod
     def get_by_id(cls, uid: int, load_if_not_found: bool = False, ignore_missing: bool = False):
