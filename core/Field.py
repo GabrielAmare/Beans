@@ -97,7 +97,7 @@ class Field:
             cls = Field.base_types.get(self.type)
 
             if cls is None:
-                cls = Bean.get_class(self.type)
+                cls = Bean.__get_class__(self.type)
 
             if cls is None:
                 raise Exception("Field Type not found {}".format(self.type))
