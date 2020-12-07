@@ -2,7 +2,6 @@ from .constants import LAZY, EAGER, JSON, CREATE, UPDATE
 from .RepositoryManager import RepositoryManager
 from .SymbolicArray import SymbolicArray
 from datetime import datetime, date
-from .functions import check_attribute
 
 
 class Bean:
@@ -65,7 +64,7 @@ class Bean:
         return repr(self.to_dict())
 
     def __new__(cls, **config):
-        instance = cls.get_by_id(config.get('uid'))
+        instance = cls.get_by_id(config.get('uid'), ignore_missing=True)
 
         if not instance:
             instance = super().__new__(cls)
