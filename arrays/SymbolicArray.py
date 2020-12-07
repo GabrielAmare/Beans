@@ -77,6 +77,18 @@ class SymbolicArray:
             pass
         return item
 
+    def append(self, item):
+        """relayed method to avoid the use of self.data.append"""
+        return self.data.append(item)
+
+    def extend(self, items):
+        """relayed method to avoid the use of self.data.extend"""
+        return self.data.extend(items)
+
+    def remove(self, item):
+        """relayed method to avoid the use of self.data.remove"""
+        return self.data.remove(item)
+
 
 if __name__ == '__main__':
     query = SymbolicArray(range(1, 100_000))
