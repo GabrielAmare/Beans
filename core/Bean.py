@@ -2,9 +2,12 @@ from .constants import LAZY, EAGER, JSON, CREATE, UPDATE
 from .RepositoryManager import RepositoryManager
 from ..arrays import SymbolicArray
 from datetime import datetime, date
+from .functions import check_attribute
 
 
 class Bean:
+    uid: int
+
     @staticmethod
     def __get_classes__():
         for subcls in Bean._subclasses:
@@ -179,20 +182,19 @@ class Bean:
     def get_by(cls, key, value):
         """Return the first instance found with the attr <key> is set to <value>"""
         assert cls.__get_field__(key), f"The field {cls.__name__}.{key} doesn't exist !"
-        for instance in cls._instances:
-            if getattr(instance, key) == value:
-                return instance
+        return cls.__get_instances__().keep(check_attribute(key, value)).first()
 
     @classmethod
-    def get_by_id(cls, uid: int, load_if_not_found: bool = False):
+    def get_by_id(cls, uid: int, load_if_not_found: bool = False, ignore_missing: bool = False):
         instance = cls.get_by('uid', uid)
         if isinstance(instance, cls):
             return instance
         elif Bean.__repository__ and load_if_not_found:
-            try:
-                return cls.load(uid)
-            except:
-                return None
+            return cls.load(uid, ignore_missing=ignore_missing)
+        elif ignore_missing:
+            return None
+        else:
+            raise Exception(f"{cls.__repo_name__}:{uid} has not been found !")
 
     @classmethod
     def from_dict(cls, data: dict):
@@ -229,13 +231,19 @@ class Bean:
         return data
 
     @classmethod
-    def load(cls, uid):
+    def load(cls, uid, ignore_missing=False):
         assert Bean.__repository__, f"Bean Repository is setup : Use Bean.__config__(repository='<your_repository>')"
-        data = Bean.__repository__.read(
-            path=cls.__repo_name__,
-            name=uid,
-            mode=cls.__file_mode__
-        )
+        try:
+            data = Bean.__repository__.read(
+                path=cls.__repo_name__,
+                name=uid,
+                mode=cls.__file_mode__
+            )
+        except Exception as e:
+            if ignore_missing:
+                return
+            else:
+                raise e
         bean = cls.from_dict(data)
         return bean
 
