@@ -61,6 +61,14 @@ class SymbolicArray:
         """Apply the <function> for each item found (do not change the items)"""
         return self._symbolic_operation(SymbolicArray.APPLY, function)
 
+    def getattr(self, name):
+        """Return the attribute value <name> from each item"""
+        return self._symbolic_operation(SymbolicArray.MAP, lambda item: getattr(item, name))
+
+    def checkattr(self, name, value):
+        """Return the items only if their <name> attribute value is equal to <value>"""
+        return self._symbolic_operation(SymbolicArray.KEEP, lambda item: getattr(item, name) == value)
+
     def finalize(self):
         """Process the operations and return a new SymbolicArray based on the result list"""
         return SymbolicArray(list(self))
