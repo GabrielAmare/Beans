@@ -70,6 +70,14 @@ class SymbolicArray:
         for item in self:
             return item
 
+    def max(self, **cfg):
+        """Return the greatest item"""
+        return max(self, **cfg)
+
+    def min(self, **cfg):
+        """Return the lowest item"""
+        return min(self, **cfg)
+
     def last(self):
         """Return the last item"""
         item = None
