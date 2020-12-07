@@ -4,6 +4,17 @@ from datetime import datetime, date
 
 
 class Bean:
+    @staticmethod
+    def __get_classes__():
+        for subcls in Bean._subclasses:
+            yield subcls
+
+    @staticmethod
+    def __get_class__(name):
+        for subclass in Bean.__get_classes__():
+            if subclass.__name__ == name:
+                return subclass
+
     """
         Bean :
             __debug_mode__ : If True, prevent field check errors to stop the runtime
@@ -110,23 +121,13 @@ class Bean:
             Bean.__debug_mode__ = config.pop('debug_mode')
 
     @staticmethod
-    def __get_subclasses__():
-        for subcls in Bean._subclasses:
-            yield subcls
-
-    @staticmethod
     def __init_repo__():
         assert Bean.__repository__, f"Bean Repository is setup : Use Bean.__config__(repository='<your_repository>')"
         repo = Bean.__repository__
         repo.mkdir()
 
-        for cls in Bean.__get_subclasses__():
+        for cls in Bean.__get_classes__():
             repo.mkdir(cls.__repo_name__)
-
-    @classmethod
-    def __add_instance__(cls, instance):
-        assert isinstance(instance, cls)
-        cls._instances.append(instance)
 
     @classmethod
     def __get_instances__(cls):
@@ -134,15 +135,32 @@ class Bean:
             yield instance
 
     @classmethod
-    def __add_field__(cls, field):
-        cls._fields.insert(0, field)
+    def __add_instance__(cls, instance):
+        assert isinstance(instance, cls)
+        cls._instances.append(instance)
+
+    @classmethod
+    def __del_instance__(cls, obj):
+        instance = cls.__cast_instance__(obj)
+        if instance in cls._instances:
+            cls._instances.remove(instance)
+
+    @classmethod
+    def __cast_instance__(cls, obj):
+        if isinstance(obj, cls):
+            return obj
+        elif isinstance(obj, int):
+            return cls.get_by_id(obj)
+        else:
+            raise Exception(f"Unable to cast {obj} into a {cls.__name__} instance")
 
     @classmethod
     def __get_fields__(cls):
+        # TODO : implement overwrite of the fields with the same name
         fields = []
-        for s_cls in cls.__mro__:
-            if issubclass(s_cls, Bean):
-                fields = s_cls._fields + fields
+        for subclass in cls.__mro__:
+            if issubclass(subclass, Bean):
+                fields = subclass._fields + fields
         return fields
 
     @classmethod
@@ -150,6 +168,12 @@ class Bean:
         for field in cls.__get_fields__():
             if field.name == name:
                 return field
+
+    @classmethod
+    def __add_field__(cls, field):
+        cls._fields.insert(0, field)
+
+    # TODO : implement __del_field__ (is it useful ?)
 
     @classmethod
     def get_by(cls, key, value):
@@ -239,7 +263,7 @@ class Bean:
     @classmethod
     def __load_all__(cls):
         if cls is Bean:
-            for b_cls in Bean.__get_subclasses__():
+            for b_cls in Bean.__get_classes__():
                 b_cls.__load_all__()
         else:
             for data in Bean.__repository__.read_all(
@@ -251,7 +275,7 @@ class Bean:
     @classmethod
     def __save_all__(cls):
         if cls is Bean:
-            for bean_cls in Bean.__get_subclasses__():
+            for bean_cls in Bean.__get_classes__():
                 bean_cls.__save_all__()
         else:
             for instance in cls.__get_instances__():
@@ -260,7 +284,7 @@ class Bean:
     @classmethod
     def __delete_all__(cls):
         if cls is Bean:
-            for b_cls in Bean.__get_subclasses__():
+            for b_cls in Bean.__get_classes__():
                 b_cls.__delete_all__()
         else:
             # delete the loaded instances
@@ -294,9 +318,3 @@ class Bean:
     def callback(self, key, *args, **kwargs):
         for function in self._subscribes.get(key, []):
             function(*args, **kwargs)
-
-    @staticmethod
-    def get_class(name):
-        for subclass in Bean._subclasses:
-            if subclass.__name__ == name:
-                return subclass
