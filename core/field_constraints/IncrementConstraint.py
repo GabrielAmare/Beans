@@ -22,8 +22,11 @@ class IncrementConstraint(FieldConstraint):
         # TODO : set a way to recalculate the max-value each time it's need for the next one
         #  it will help when looking for calculation optimizations
         #  something like bean.max_field_value(field) -> current_max (max_field_value is a classmethod)
-        values = [getattr(instance, field.name) for instance in bean.__class__.__get_instances__()]
-        return True, max(values, default=self.start) + self.step
+        value = bean.__class__\
+                    .__get_instances__()\
+                    .getattr(field.name)\
+                    .max(default=self.start) + self.step
+        return True, value
 
     def check(self, bean, field, value):
         return []
