@@ -1,6 +1,6 @@
 from .constants import LAZY, EAGER, JSON, CREATE, UPDATE
 from .RepositoryManager import RepositoryManager
-from ..arrays import SymbolicArray
+from .SymbolicArray import SymbolicArray
 from datetime import datetime, date
 from .functions import check_attribute
 
