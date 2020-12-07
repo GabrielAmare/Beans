@@ -1,5 +1,6 @@
 from .constants import LAZY, EAGER, JSON, CREATE, UPDATE
 from .RepositoryManager import RepositoryManager
+from ..arrays import SymbolicArray
 from datetime import datetime, date
 
 
@@ -130,9 +131,8 @@ class Bean:
             repo.mkdir(cls.__repo_name__)
 
     @classmethod
-    def __get_instances__(cls):
-        for instance in cls._instances:
-            yield instance
+    def __get_instances__(cls) -> SymbolicArray:
+        return SymbolicArray(cls._instances)
 
     @classmethod
     def __add_instance__(cls, instance):
