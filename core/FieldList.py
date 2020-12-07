@@ -19,7 +19,7 @@ class FieldList(list):
     def remove(self, value):
         value = self.field.cast_one(self.bean, value)
         super().remove(value)
-        self.bean.callback(f"{self.field.name}:remove")
+        self.bean.callback(f"{self.field.name}:remove", value)
 
     def extend(self, values):
         for value in values:
