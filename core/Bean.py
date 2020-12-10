@@ -36,6 +36,7 @@ class Bean:
             _instances : instances of the Bean subclass, holds the runtime loaded instances
     """
     _fields = []
+    _constraints = []
     _instances = []
     _subclasses = []
 
@@ -46,6 +47,7 @@ class Bean:
 
     def __init_subclass__(cls, **kwargs):
         cls._fields = []
+        cls._constraints = []
         cls._instances = []
         cls.__repo_name__ = kwargs.get('repo_name', cls.__name__.lower())
         Bean._subclasses.append(cls)
@@ -176,6 +178,27 @@ class Bean:
         cls._fields.insert(0, field)
 
     # TODO : implement __del_field__ (is it useful ?)
+
+    @classmethod
+    def __get_constraints__(cls):
+        # TODO : implement overwrite of the constraints with the same name
+        constraints = []
+        for subclass in cls.__mro__:
+            if issubclass(subclass, Bean):
+                constraints = subclass._constraints + constraints
+        return constraints
+
+    @classmethod
+    def __get_constraint__(cls, name):
+        for constraint in cls.__get_constraints__():
+            if constraint.name == name:
+                return constraint
+
+    @classmethod
+    def __add_constraint__(cls, constraint):
+        cls._constraints.insert(0, constraint)
+
+    # TODO : implement __del_constraint__ (is it useful ?)
 
     @classmethod
     def get_by(cls, key, value):
