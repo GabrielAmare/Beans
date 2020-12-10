@@ -5,6 +5,11 @@ class SymbolicArray:
     MAP = 'map'
     APPLY = 'apply'
 
+    S_MAP = 'separate_map'
+    S_FILTER = 'separate_filter'
+    S_KEEP = 'separate_keep'
+    S_APPLY = 'separate_apply'
+
     operations: list
 
     def __init__(self, data):
@@ -23,13 +28,23 @@ class SymbolicArray:
                 if operation == SymbolicArray.FILTER:
                     if function(item):
                         break
+                elif operation == SymbolicArray.S_FILTER:
+                    if function(*item):
+                        break
                 elif operation == SymbolicArray.KEEP:
                     if not function(item):
                         break
+                elif operation == SymbolicArray.S_KEEP:
+                    if not function(*item):
+                        break
                 elif operation == SymbolicArray.MAP:
                     item = function(item)
+                elif operation == SymbolicArray.S_MAP:
+                    item = function(*item)
                 elif operation == SymbolicArray.APPLY:
                     function(item)
+                elif operation == SymbolicArray.S_APPLY:
+                    function(*item)
                 else:
                     raise Exception(f"Invalid operation {repr(operation)} !")
             else:
@@ -60,6 +75,22 @@ class SymbolicArray:
     def apply(self, function):
         """Apply the <function> for each item found (do not change the items)"""
         return self._symbolic_operation(SymbolicArray.APPLY, function)
+
+    def sfilter(self, function):
+        """Filter the items when <function> of them is False"""
+        return self._symbolic_operation(SymbolicArray.S_FILTER, function)
+
+    def skeep(self, function):
+        """Keep the items when <function> of them is True"""
+        return self._symbolic_operation(SymbolicArray.S_KEEP, function)
+
+    def smap(self, function):
+        """Turn the items into <function> of them"""
+        return self._symbolic_operation(SymbolicArray.S_MAP, function)
+
+    def sapply(self, function):
+        """Apply the <function> for each item found (do not change the items)"""
+        return self._symbolic_operation(SymbolicArray.S_APPLY, function)
 
     def getattr(self, name):
         """Return the attribute value <name> from each item"""
@@ -113,3 +144,10 @@ if __name__ == '__main__':
     print(query)
     result = query.finalize()
     print(result)
+
+
+    print(SymbolicArray(range(10))
+        .map(lambda item: (item-1, item+1))
+        .skeep(lambda i, j: (i % 3 == 0) or (j % 3 == 0))
+        .smap(lambda i, j: i * j)
+        .finalize())
